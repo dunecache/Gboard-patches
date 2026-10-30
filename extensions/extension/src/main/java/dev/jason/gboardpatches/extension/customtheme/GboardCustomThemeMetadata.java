@@ -22,7 +22,9 @@ public final class GboardCustomThemeMetadata {
                 read += r;
             }
             JSONObject json = new JSONObject(new String(buf, 0, read, "UTF-8"));
-            return json.optBoolean("is_light_theme", true);
+            if (json.has("is_light_theme")) return json.optBoolean("is_light_theme", true);
+            if (json.has("isDark")) return !json.optBoolean("isDark", false);
+            return true;
         } catch (Exception e) {
             return true;
         }

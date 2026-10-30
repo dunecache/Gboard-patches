@@ -35,11 +35,33 @@ public final class GboardCustomThemeInstaller {
 
     private static ImportedArchive importArchiveWithOwnership(Context context, File source)
             throws Exception {
+        // Rboard "pack" archives bundle light+dark variants. Extract the variant
+        // matching the current system theme before validating/installing.
+        File actualSource = source;
+        File extractedDir = null;
+        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(source)) {
+            if (GboardCustomThemePack.isPack(zf)) {
+                extractedDir = new File(context.getCacheDir(), STAGING_PREFIX + UUID.randomUUID());
+                extractedDir.mkdirs();
+                java.util.List<GboardCustomThemePackVariants.Variant> variants =
+                        GboardCustomThemePackVariants.extract(source, extractedDir);
+                boolean night = (context.getResources().getConfiguration().uiMode
+                        & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                GboardCustomThemePackVariants.Variant chosen = null;
+                for (GboardCustomThemePackVariants.Variant v : variants) {
+                    if (v.light == !night) { chosen = v; break; }
+                }
+                if (chosen == null && !variants.isEmpty()) chosen = variants.get(0);
+                if (chosen == null) throw new IOException("Pack contains no installable variant");
+                actualSource = chosen.file;
+            }
+        }
         File staging = new File(context.getFilesDir(), STAGING_PREFIX + UUID.randomUUID() + ".part");
         File committed = null;
         boolean created = false;
         try {
-            copyBounded(source, staging);
+            copyBounded(actualSource, staging);
             inspect(staging);
             if (!validateWithGboard(context, staging)) throw new IOException("Gboard rejected the theme archive");
             File duplicate = findDuplicate(context, staging);
