@@ -14,7 +14,8 @@ public final class GboardThemeImportContract {
     private GboardThemeImportContract() { }
 
     public static boolean isRootMetadata(String name) {
-        return "metadata.json".equals(name) || "metadata.binarypb".equals(name);
+        return "metadata.json".equals(name) || "metadata.binarypb".equals(name)
+                || "pack.meta".equals(name);
     }
 
     public static boolean isSafeEntryName(String name) {
