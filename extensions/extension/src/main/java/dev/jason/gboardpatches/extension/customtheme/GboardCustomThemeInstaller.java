@@ -48,13 +48,29 @@ public final class GboardCustomThemeInstaller {
                 boolean night = (context.getResources().getConfiguration().uiMode
                         & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                         == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                // Commit both variants so we can swap at runtime on dark-mode change.
+                File lightFile = null, darkFile = null;
+                for (GboardCustomThemePackVariants.Variant v : variants) {
+                    File committed = importArchive(context, v.file);
+                    if (v.light) lightFile = committed; else darkFile = committed;
+                }
+                // Store the pair for runtime switching.
+                Context storage = context.createDeviceProtectedStorageContext();
+                android.content.SharedPreferences prefs = storage.getSharedPreferences(
+                        context.getPackageName() + "_patches_theme", android.content.Context.MODE_PRIVATE);
+                prefs.edit()
+                        .putString("light", lightFile == null ? null : "files:" + lightFile.getName())
+                        .putString("dark", darkFile == null ? null : "files:" + darkFile.getName())
+                        .commit();
                 GboardCustomThemePackVariants.Variant chosen = null;
                 for (GboardCustomThemePackVariants.Variant v : variants) {
                     if (v.light == !night) { chosen = v; break; }
                 }
                 if (chosen == null && !variants.isEmpty()) chosen = variants.get(0);
                 if (chosen == null) throw new IOException("Pack contains no installable variant");
-                actualSource = chosen.file;
+                // Map chosen back to committed file.
+                actualSource = (chosen.light ? lightFile : darkFile);
+                if (actualSource == null) actualSource = chosen.file;
             }
         }
         File staging = new File(context.getFilesDir(), STAGING_PREFIX + UUID.randomUUID() + ".part");
